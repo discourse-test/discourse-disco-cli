@@ -1,0 +1,18 @@
+pre-commit:
+  parallel: true
+  commands:
+    rubocop:
+      glob:
+        - "*.rb"
+        - "*.rake"
+        - "Gemfile"
+        - "Rakefile"
+      run: bundle exec rubocop {staged_files}
+
+    syntax-tree-ruby:
+      glob:
+        - "*.rb"
+        - "*.rake"
+        - "Gemfile"
+        - "Rakefile"
+      run: bundle exec stree check {staged_files}
