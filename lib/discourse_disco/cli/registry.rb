@@ -8,36 +8,52 @@ module DiscourseDisco
     module Registry
       # `requires_rails` means the command class itself can only be loaded
       # after Rails booted, e.g. because it comes from a gem that Rails
-      # activates. Such a class is loaded only when its command is called.
-      Entry = Struct.new(:name, :command_class, :description, :requires_rails, keyword_init: true)
+      # activates. `loader` is a callable that makes the class loadable some
+      # other way, e.g. by activating the gems it comes from. Either way the
+      # class is loaded only when its command is called.
+      Entry =
+        Struct.new(
+          :name,
+          :command_class,
+          :description,
+          :requires_rails,
+          :loader,
+          keyword_init: true,
+        ) do
+          def deferred?
+            requires_rails || !loader.nil?
+          end
+        end
 
       def self.entries
         @entries ||= {}
       end
 
-      def self.register(name:, command_class:, description: nil, requires_rails: nil)
+      def self.register(name:, command_class:, description: nil, requires_rails: nil, loader: nil)
         name = name.to_s
         raise "A command named '#{name}' is already registered" if entries.key?(name)
 
-        requires_rails = @requires_rails_default if requires_rails.nil?
+        defaults = @defaults || {}
+        requires_rails = defaults[:requires_rails] if requires_rails.nil?
         entries[name] = Entry.new(
           name:,
           command_class:,
           description:,
           requires_rails: requires_rails || false,
+          loader: loader || defaults[:loader],
         )
       end
 
-      # Applies `requires_rails` to the commands registered in the block. A
-      # launcher wraps the registration files of code that only loads with
-      # Rails, so the same files work for a launcher that loads that code
-      # without Rails.
-      def self.with_defaults(requires_rails:)
-        previous = @requires_rails_default
-        @requires_rails_default = requires_rails
+      # Applies `requires_rails` and `loader` to the commands registered in the
+      # block. A launcher wraps the registration files of code that it loads in
+      # a special way, so the same files work for a launcher that loads that
+      # code directly.
+      def self.with_defaults(requires_rails: nil, loader: nil)
+        previous = @defaults
+        @defaults = (previous || {}).merge({ requires_rails:, loader: }.compact)
         yield
       ensure
-        @requires_rails_default = previous
+        @defaults = previous
       end
 
       def self.reset!

@@ -139,6 +139,51 @@ RSpec.describe DiscourseDisco::CLI::Bootstrap do
       expect(calls).to be_empty
     end
 
+    context "with a command whose class needs a loader" do
+      let(:loaded_command) do
+        log = calls
+        Class.new(DiscourseDisco::CLI::Command) do
+          self.description = "Loaded by a loader"
+
+          define_method(:call) { log << :loaded_command }
+        end
+      end
+
+      let(:loader) do
+        command = loaded_command
+        -> do
+          calls << :loader
+          stub_const("DiscoSpecLoadedCommand", command)
+        end
+      end
+
+      before do
+        DiscourseDisco::CLI::Registry.register(
+          name: "loaded",
+          command_class: "DiscoSpecLoadedCommand",
+          description: "From a loader",
+          loader:,
+        )
+      end
+
+      it "lists it in the usage without calling the loader" do
+        expect { run(%w[--help], boot_rails:) }.to output(
+          a_string_including("loaded", "From a loader"),
+        ).to_stdout.and raise_error(SystemExit) { |error| expect(error.status).to eq(0) }
+        expect(calls).to be_empty
+      end
+
+      it "calls the loader before loading its class, without booting Rails" do
+        run(%w[loaded], boot_rails:)
+        expect(calls).to eq(%i[loader loaded_command])
+      end
+
+      it "doesn't call the loader for other commands" do
+        run(%w[hello world], boot_rails:)
+        expect(calls).to eq([[:hello, "world", "bin/disco"]])
+      end
+    end
+
     context "with a command whose class only loads after Rails booted" do
       let(:plugin_command) do
         log = calls

@@ -19,7 +19,10 @@ module DiscourseDisco
         # The top-level command has no options, so a command name can only be
         # the first token.
         selected = Registry.entries[argv.first]
-        CLI.boot_rails!("#{program_name} #{selected.name}") if selected&.requires_rails
+        if selected
+          selected.loader&.call
+          CLI.boot_rails!("#{program_name} #{selected.name}") if selected.requires_rails
+        end
 
         top = build_top_command_class(description, selected&.name).new(argv, name: program_name)
 
@@ -66,9 +69,9 @@ module DiscourseDisco
         node
       end
 
-      # Lists a command whose class can only load after Rails booted, so usage
-      # and `--help` don't boot Rails. It's never called: selecting the command
-      # loads the real class.
+      # Lists a command whose class needs Rails or a loader, so usage and
+      # `--help` stay fast. It's never called: selecting the command loads the
+      # real class.
       def self.placeholder(entry)
         Class.new(Command) { self.description = entry.description }
       end
@@ -89,7 +92,7 @@ module DiscourseDisco
             .entries
             .sort_by { |name, _| name }
             .to_h do |name, entry|
-              if entry.requires_rails && name != selected_name
+              if entry.deferred? && name != selected_name
                 [name, placeholder(entry)]
               else
                 [name, Registry.resolve(name)]

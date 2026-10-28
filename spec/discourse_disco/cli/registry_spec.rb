@@ -39,6 +39,28 @@ RSpec.describe DiscourseDisco::CLI::Registry do
       expect(described_class.entries["outside"].requires_rails).to eq(false)
     end
 
+    it "sets a loader for the commands registered in the block" do
+      loader = -> {}
+      described_class.with_defaults(loader:) do
+        described_class.register(name: "inside", command_class:)
+      end
+      described_class.register(name: "outside", command_class:)
+
+      expect(described_class.entries["inside"]).to have_attributes(loader:, deferred?: true)
+      expect(described_class.entries["outside"]).to have_attributes(loader: nil, deferred?: false)
+    end
+
+    it "keeps the outer defaults in a nested block" do
+      loader = -> {}
+      described_class.with_defaults(loader:) do
+        described_class.with_defaults(requires_rails: true) do
+          described_class.register(name: "hello", command_class:)
+        end
+      end
+
+      expect(described_class.entries["hello"]).to have_attributes(loader:, requires_rails: true)
+    end
+
     it "lets an explicit argument win" do
       described_class.with_defaults(requires_rails: true) do
         described_class.register(name: "hello", command_class:, requires_rails: false)
