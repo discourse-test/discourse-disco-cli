@@ -9,12 +9,18 @@ module DiscourseDisco
     # the given argv, lazily boots Rails when the selected command requires it,
     # and dispatches.
     module Bootstrap
-      def self.run(argv)
-        top = build_top_command_class.new(normalize_option_args(argv))
+      # `program_name` is how users call the launcher; it's shown in usage and
+      # hints. `boot_rails` is a callable that boots the Rails app, or `nil`
+      # when the launcher runs without one.
+      def self.run(argv, program_name:, boot_rails: nil, description: nil)
+        CLI.configure(program_name:, boot_rails:)
+
+        top =
+          build_top_command_class(description).new(normalize_option_args(argv), name: program_name)
 
         leaf = deepest_command(top)
         if leaf.class.respond_to?(:requires_rails?) && leaf.class.requires_rails?
-          Migrations.load_rails_environment(quiet: true)
+          CLI.boot_rails!(command_line(leaf))
         end
 
         top.call
@@ -56,11 +62,21 @@ module DiscourseDisco
         node
       end
 
-      def self.build_top_command_class
+      def self.command_line(command)
+        names = []
+        node = command
+        while node
+          names.unshift(node.name)
+          node = node.parent
+        end
+        names.join(" ")
+      end
+
+      def self.build_top_command_class(description)
         commands = Registry.command_classes
 
         Class.new(Command) do
-          self.description = "Discourse migration tools"
+          self.description = description
           nested :command, commands
 
           def call
