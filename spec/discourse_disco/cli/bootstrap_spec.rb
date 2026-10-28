@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Migrations::CLI::Bootstrap do
+RSpec.describe DiscourseDisco::CLI::Bootstrap do
   describe ".normalize_option_args" do
     subject(:normalized) { described_class.normalize_option_args(argv) }
 

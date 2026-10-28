@@ -2,7 +2,7 @@
 
 require "samovar"
 
-module Migrations
+module DiscourseDisco
   module CLI
     # Builds the Samovar command tree from the registry, selects the command for
     # the given argv, lazily boots Rails when the selected command requires it,

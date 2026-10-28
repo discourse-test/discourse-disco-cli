@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Migrations::CLI::Command do
+RSpec.describe DiscourseDisco::CLI::Command do
   describe "#require_positional!" do
     # `require_positional!` is private; expose it through a subclass so these
     # specs can drive it directly.
@@ -28,7 +28,7 @@ RSpec.describe Migrations::CLI::Command do
 
     it "raises an error that the exception handler presents without a backtrace" do
       expect(described_class::MissingPositionalError.ancestors).to include(
-        Migrations::CLI::PresentableError,
+        DiscourseDisco::CLI::PresentableError,
       )
     end
   end

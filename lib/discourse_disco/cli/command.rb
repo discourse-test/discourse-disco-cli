@@ -2,7 +2,7 @@
 
 require "samovar"
 
-module Migrations
+module DiscourseDisco
   module CLI
     # Base class for all `disco` commands. Commands that need a booted Rails
     # environment declare `requires_rails!`; the binary boots Rails only after

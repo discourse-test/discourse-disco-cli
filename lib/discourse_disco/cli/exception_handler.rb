@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Migrations
+module DiscourseDisco
   module CLI
     class ExceptionHandler
       def self.handle_and_exit(&block)

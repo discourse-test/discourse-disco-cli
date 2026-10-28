@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Migrations
+module DiscourseDisco
   module CLI
     # Central registry of top-level `disco` commands. Each gem requires its
     # `register.rb` at startup, which pushes its commands here. The Samovar
