@@ -15,8 +15,13 @@ module DiscourseDisco
       def self.run(argv, program_name:, boot_rails: nil, description: nil)
         CLI.configure(program_name:, boot_rails:)
 
-        top =
-          build_top_command_class(description).new(normalize_option_args(argv), name: program_name)
+        argv = normalize_option_args(argv)
+        # The top-level command has no options, so a command name can only be
+        # the first token.
+        selected = Registry.entries[argv.first]
+        CLI.boot_rails!("#{program_name} #{selected.name}") if selected&.requires_rails
+
+        top = build_top_command_class(description, selected&.name).new(argv, name: program_name)
 
         leaf = deepest_command(top)
         if leaf.class.respond_to?(:requires_rails?) && leaf.class.requires_rails?
@@ -61,6 +66,13 @@ module DiscourseDisco
         node
       end
 
+      # Lists a command whose class can only load after Rails booted, so usage
+      # and `--help` don't boot Rails. It's never called: selecting the command
+      # loads the real class.
+      def self.placeholder(entry)
+        Class.new(Command) { self.description = entry.description }
+      end
+
       def self.command_line(command)
         names = []
         node = command
@@ -71,8 +83,18 @@ module DiscourseDisco
         names.join(" ")
       end
 
-      def self.build_top_command_class(description)
-        commands = Registry.command_classes
+      def self.build_top_command_class(description, selected_name)
+        commands =
+          Registry
+            .entries
+            .sort_by { |name, _| name }
+            .to_h do |name, entry|
+              if entry.requires_rails && name != selected_name
+                [name, placeholder(entry)]
+              else
+                [name, Registry.resolve(name)]
+              end
+            end
 
         Class.new(Command) do
           self.description = description

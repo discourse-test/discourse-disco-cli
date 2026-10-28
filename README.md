@@ -69,6 +69,18 @@ end
 
 `boot_rails` is optional. Without it, commands that declare `requires_rails!` fail with a message saying that they need a Discourse install.
 
+### Commands that only load with Rails
+
+Some command classes can only be loaded after Rails booted, e.g. a plugin's commands when Rails activates the plugin's gems. Register them with `requires_rails: true`, or wrap the file that registers them:
+
+```ruby
+DiscourseDisco::CLI::Registry.with_defaults(requires_rails: true) do
+  Dir[File.join(root, "plugins/*/disco/register.rb")].sort.each { |path| require path }
+end
+```
+
+Their classes are loaded only when their command is called, after Rails booted. `--help` lists them with the description they were registered with, without booting Rails. The same registration file works in a launcher that loads those classes without Rails: it just doesn't wrap it.
+
 ## Development
 
 ```bash

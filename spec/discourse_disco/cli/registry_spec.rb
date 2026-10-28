@@ -28,26 +28,53 @@ RSpec.describe DiscourseDisco::CLI::Registry do
     end
   end
 
-  describe ".command_classes" do
-    it "orders the commands by name" do
-      described_class.register(name: "zebra", command_class:)
-      described_class.register(name: "apple", command_class:)
+  describe ".with_defaults" do
+    it "flags the commands registered in the block" do
+      described_class.with_defaults(requires_rails: true) do
+        described_class.register(name: "inside", command_class:)
+      end
+      described_class.register(name: "outside", command_class:)
 
-      expect(described_class.command_classes.keys).to eq(%w[apple zebra])
+      expect(described_class.entries["inside"].requires_rails).to eq(true)
+      expect(described_class.entries["outside"].requires_rails).to eq(false)
+    end
+
+    it "lets an explicit argument win" do
+      described_class.with_defaults(requires_rails: true) do
+        described_class.register(name: "hello", command_class:, requires_rails: false)
+      end
+
+      expect(described_class.entries["hello"].requires_rails).to eq(false)
+    end
+
+    it "restores the previous default when the block raises" do
+      expect {
+        described_class.with_defaults(requires_rails: true) { raise "broken registration" }
+      }.to raise_error(RuntimeError, "broken registration")
+
+      described_class.register(name: "hello", command_class:)
+      expect(described_class.entries["hello"].requires_rails).to eq(false)
+    end
+  end
+
+  describe ".resolve" do
+    it "returns a registered class" do
+      described_class.register(name: "hello", command_class:)
+      expect(described_class.resolve("hello")).to eq(command_class)
     end
 
     it "resolves classes registered by name only when asked for" do
       described_class.register(name: "hello", command_class: "DiscoSpecRegistryCommand")
       stub_const("DiscoSpecRegistryCommand", command_class)
 
-      expect(described_class.command_classes).to eq("hello" => command_class)
+      expect(described_class.resolve("hello")).to eq(command_class)
     end
 
     it "resolves namespaced class names given as symbols" do
       stub_const("DiscoSpec::RegistryCommand", command_class)
       described_class.register(name: "hello", command_class: :"DiscoSpec::RegistryCommand")
 
-      expect(described_class.command_classes).to eq("hello" => command_class)
+      expect(described_class.resolve("hello")).to eq(command_class)
     end
   end
 end

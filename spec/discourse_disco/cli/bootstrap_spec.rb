@@ -138,5 +138,58 @@ RSpec.describe DiscourseDisco::CLI::Bootstrap do
       )
       expect(calls).to be_empty
     end
+
+    context "with a command whose class only loads after Rails booted" do
+      let(:plugin_command) do
+        log = calls
+        Class.new(DiscourseDisco::CLI::Command) do
+          requires_rails!
+          self.description = "Loaded by Rails"
+
+          define_method(:call) { log << :plugin_command }
+        end
+      end
+
+      let(:boot_rails_defining_the_class) do
+        command = plugin_command
+        -> do
+          calls << :boot_rails
+          stub_const("DiscoSpecPluginCommand", command)
+        end
+      end
+
+      before do
+        DiscourseDisco::CLI::Registry.register(
+          name: "plugin",
+          command_class: "DiscoSpecPluginCommand",
+          description: "From a plugin",
+          requires_rails: true,
+        )
+      end
+
+      it "lists it in the usage without loading its class or booting Rails" do
+        expect { run(%w[--help], boot_rails: boot_rails_defining_the_class) }.to output(
+          a_string_including("plugin", "From a plugin", "hello"),
+        ).to_stdout.and raise_error(SystemExit) { |error| expect(error.status).to eq(0) }
+        expect(calls).to be_empty
+      end
+
+      it "runs other commands without loading its class" do
+        run(%w[hello world], boot_rails: boot_rails_defining_the_class)
+        expect(calls).to eq([[:hello, "world", "bin/disco"]])
+      end
+
+      it "boots Rails once before loading its class when it's called" do
+        run(%w[plugin], boot_rails: boot_rails_defining_the_class)
+        expect(calls).to eq(%i[boot_rails plugin_command])
+      end
+
+      it "raises a presentable error when it's called and Rails can't boot" do
+        expect { run(%w[plugin]) }.to raise_error(
+          DiscourseDisco::CLI::RailsUnavailableError,
+          "`bin/disco plugin` needs a Discourse install.",
+        )
+      end
+    end
   end
 end
