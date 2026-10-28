@@ -41,10 +41,9 @@ module DiscourseDisco
         exit(help_request ? 0 : 1)
       end
 
-      # Samovar expects `--opt value`; the previous Thor-based CLI also accepted
-      # `--opt=value`. Split the `=` form into two tokens so existing muscle
-      # memory keeps working. Only long options are touched; `--`, short flags,
-      # and bare positional values pass through unchanged.
+      # Samovar expects `--opt value`, but users also type `--opt=value`, so
+      # split that form into two tokens. Only long options are touched; `--`,
+      # short flags, and bare positional values pass through unchanged.
       def self.normalize_option_args(argv)
         argv.flat_map do |arg|
           if arg.start_with?("--") && (index = arg.index("=")) && index > 2

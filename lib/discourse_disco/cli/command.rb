@@ -14,12 +14,6 @@ module DiscourseDisco
         include PresentableError
       end
 
-      # Coerces a comma-separated `--only`/`--skip` value into a list of
-      # normalized step names. Shared as the `type:` for those options.
-      STEP_LIST = ->(value) do
-        value.to_s.split(",").map { |name| name.strip.demodulize.underscore }
-      end
-
       def self.requires_rails!
         @requires_rails = true
       end
@@ -33,8 +27,8 @@ module DiscourseDisco
       # options at the front of the remaining input — so by default options must
       # precede positionals (`convert --only x discourse`). Hoist any recognized
       # option flags (and their values) to the front so they may also appear
-      # after positionals (`convert discourse --only x`), the way the previous
-      # Thor-based CLI allowed. Everything after a `--` separator is left as-is.
+      # after positionals (`convert discourse --only x`), as users expect from
+      # most CLIs. Everything after a `--` separator is left as-is.
       def parse(input)
         # Reorder in place: Samovar consumes the input array by reference (nested
         # commands rely on it being emptied), so we must mutate it rather than
