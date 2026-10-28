@@ -26,4 +26,86 @@ jobs:
         run: bundle exec rubocop
 
       - name: Check Ruby formatting with Syntax Tree
-        run: bundle exec stree check Gemfile Rakefile "lib/**/*.rb" "spec/**/*.rb"
+        run: bundle exec stree check Gemfile Rakefile "*.gemspec" "lib/**/*.rb" "spec/**/*.rb"
+
+  test:
+    runs-on: ubuntu-latest
+    name: Ruby ${{ matrix.ruby }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - '3.4'
+          - '4.0'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+
+      - name: Run tests
+        run: bundle exec rspec
+
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    needs:
+      - lint
+      - test
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          # Fetches the tags, which tell whether this version is released.
+          fetch-depth: 0
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0'
+
+      - name: Check for an existing release
+        id: version
+        run: |
+          VERSION=$(ruby -r ./lib/discourse_disco/cli/version -e 'puts DiscourseDisco::CLI::VERSION')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          if [ -n "$(git tag --list "v${VERSION}")" ]; then
+            echo "Tag v${VERSION} already exists, skipping the release."
+            echo "released=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and push the gem
+        if: steps.version.outputs.released == 'false'
+        run: |
+          mkdir -p ~/.gem
+          printf -- "---\n:github: Bearer %s\n" "${GITHUB_TOKEN}" > ~/.gem/credentials
+          chmod 0600 ~/.gem/credentials
+          gem build discourse-disco-cli.gemspec
+          gem push --key github --host https://rubygems.pkg.github.com/discourse-test "discourse-disco-cli-${VERSION}.gem"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Create the tag and GitHub release
+        if: steps.version.outputs.released == 'false'
+        run: gh release create "v${VERSION}" --target "${GITHUB_SHA}" --title "v${VERSION}" --generate-notes --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
