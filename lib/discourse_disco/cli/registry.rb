@@ -2,9 +2,9 @@
 
 module DiscourseDisco
   module CLI
-    # Central registry of top-level `disco` commands. Each gem requires its
-    # `register.rb` at startup, which pushes its commands here. The Samovar
-    # command tree is built from this registry just before argv is parsed.
+    # Central registry of top-level commands. Launchers, gems and plugins
+    # register their commands here at startup. The Samovar command tree is
+    # built from this registry just before argv is parsed.
     module Registry
       Entry = Struct.new(:name, :command_class, :description, keyword_init: true)
 
@@ -14,7 +14,7 @@ module DiscourseDisco
 
       def self.register(name:, command_class:, description: nil)
         name = name.to_s
-        raise "A `disco` command named '#{name}' is already registered" if entries.key?(name)
+        raise "A command named '#{name}' is already registered" if entries.key?(name)
         entries[name] = Entry.new(name:, command_class:, description:)
       end
 
@@ -22,14 +22,15 @@ module DiscourseDisco
         @entries = {}
       end
 
-      # Resolves the registered command classes (stored as strings to keep Rails
-      # lazy) into a name => Class hash, ordered by registration name.
+      # Resolves the registered command classes into a name => Class hash,
+      # ordered by registration name. Classes may be registered by name, so
+      # registering doesn't load them (or Rails) early.
       def self.command_classes
         entries
           .sort_by { |name, _| name }
           .each_with_object({}) do |(name, entry), hash|
             klass = entry.command_class
-            klass = klass.to_s.constantize if klass.is_a?(String) || klass.is_a?(Symbol)
+            klass = Object.const_get(klass.to_s) if klass.is_a?(String) || klass.is_a?(Symbol)
             hash[name] = klass
           end
       end

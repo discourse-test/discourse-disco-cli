@@ -94,6 +94,16 @@ RSpec.describe DiscourseDisco::CLI::Bootstrap do
       expect(calls).to eq([[:hello, "world", "bin/disco"]])
     end
 
+    it "resolves command classes registered by name" do
+      stub_const("DiscoSpecCommand", hello_command)
+      DiscourseDisco::CLI::Registry.reset!
+      DiscourseDisco::CLI::Registry.register(name: "hello", command_class: "DiscoSpecCommand")
+
+      run(%w[hello world])
+
+      expect(calls).to eq([[:hello, "world", "bin/disco"]])
+    end
+
     it "shows the program name and the description in the usage" do
       expect { run(%w[--help], description: "Discourse tools") }.to output(
         a_string_including("bin/disco", "Discourse tools", "hello", "needs-rails"),
