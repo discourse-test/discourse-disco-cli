@@ -4,6 +4,7 @@ source "https://rubygems.org"
 
 gemspec
 
+gem "irb"
 gem "lefthook"
 gem "rake"
 gem "rspec"
