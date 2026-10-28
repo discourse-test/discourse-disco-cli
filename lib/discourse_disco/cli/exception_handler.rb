@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "colored2"
+
 module DiscourseDisco
   module CLI
     class ExceptionHandler
