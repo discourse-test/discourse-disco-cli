@@ -6,7 +6,7 @@ The command framework behind Discourse's `disco` CLI: a registry that applicatio
 
 - `bin/rspec`: run the specs
 - `bin/lint`: autocorrect with RuboCop and format with Syntax Tree
-- `bin/rubocop`, `bin/stree check '**/*.rb'`: check without changing files
+- `bin/rubocop`, `bin/stree check Gemfile Rakefile '*.gemspec' '**/*.rb'`: check without changing files
 
 ## Gotchas
 
@@ -16,6 +16,8 @@ The command framework behind Discourse's `disco` CLI: a registry that applicatio
 
 ## Conventions
 
+- The gem knows nothing about the application it runs in. The launcher passes the program name and how to boot Rails to `Bootstrap.run`; show the program name with `DiscourseDisco::CLI.program_name` and boot Rails through `requires_rails!` or `DiscourseDisco::CLI.boot_rails!`, never by path.
+- No ActiveSupport or Rails in `lib/`: the gem has to load and run before Rails boots, or without it.
 - Comments explain why, not what. No comments that describe history or code that was removed.
 - No `module_function`, no endless methods, no `send`/`public_send` (RuboCop enforces this).
 - Prefer `> 0` / `< 0` over `.positive?` / `.negative?`.
